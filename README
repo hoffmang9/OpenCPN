@@ -4,8 +4,6 @@
 
 a.  Opencpn was built with the following objectives in mind.
 
-Not failing a Window build. TODO - remove or delete
-
     i.   Intended use as primary navigation interface for vessels
          with full-time helm-visible navigational suites.
          Other tools may be better for offline route planning, tide
