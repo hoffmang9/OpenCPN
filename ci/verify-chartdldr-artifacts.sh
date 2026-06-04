@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+# Smoke-test chartdldr prebuilt zips: unpack in a clean dir and verify layout.
+set -euo pipefail
+
+ARTIFACT_ROOT="${1:-artifact}"
+
+if [[ ! -d "$ARTIFACT_ROOT" ]]; then
+  echo "Artifact directory not found: $ARTIFACT_ROOT" >&2
+  exit 1
+fi
+
+mapfile -t ZIPS < <(find "$ARTIFACT_ROOT" -type f -name 'chartdldr_pi-*.zip' | sort)
+if [[ ${#ZIPS[@]} -eq 0 ]]; then
+  echo "No chartdldr_pi-*.zip files under ${ARTIFACT_ROOT}" >&2
+  exit 1
+fi
+
+fail() {
+  echo "verify-chartdldr: $*" >&2
+  exit 1
+}
+
+require_file() {
+  local path="$1"
+  [[ -f "$path" ]] || fail "missing file: $path"
+}
+
+require_dir() {
+  local path="$1"
+  [[ -d "$path" ]] || fail "missing directory: $path"
+}
+
+platform_from_zip() {
+  local base="$1"
+  case "$base" in
+    *-linux-amd64.zip) echo linux-amd64 ;;
+    *-linux-arm64.zip) echo linux-arm64 ;;
+    *-windows.zip) echo windows ;;
+    *-macos.zip) echo macos ;;
+    *) echo unknown ;;
+  esac
+}
+
+verify_zip() {
+  local zip="$1"
+  local platform
+  platform="$(platform_from_zip "$(basename "$zip")")"
+  [[ "$platform" != unknown ]] || fail "unrecognized zip name: $zip"
+
+  local tmpdir staging
+  tmpdir="$(mktemp -d)"
+  trap 'rm -rf "$tmpdir"' RETURN
+
+  unzip -q "$zip" -d "$tmpdir"
+  staging="$(find "$tmpdir" -maxdepth 1 -type d -name 'chartdldr_pi-*' | head -1)"
+  [[ -n "$staging" ]] || fail "no staging directory in $zip"
+
+  echo "Verifying ${platform} ($(basename "$zip"))"
+
+  case "$platform" in
+    linux-amd64|linux-arm64)
+      require_file "${staging}/lib/libchartdldr_pi.so"
+      require_file "${staging}/install-chartdldr-linux.sh"
+      require_file "${staging}/share/opencpn/plugins/chartdldr_pi/chart_sources.xml"
+      local elf
+      elf="$(file -b "${staging}/lib/libchartdldr_pi.so")"
+      if [[ "$platform" == linux-amd64 ]]; then
+        echo "$elf" | grep -qE 'ELF 64-bit.*x86-64' || fail "expected x86-64 ELF, got: $elf"
+      else
+        echo "$elf" | grep -qE 'ELF 64-bit.*aarch64|ARM aarch64' || fail "expected arm64 ELF, got: $elf"
+      fi
+      ;;
+    windows)
+      require_file "${staging}/plugins/chartdldr_pi.dll"
+      require_file "${staging}/install-chartdldr-windows.bat"
+      require_file "${staging}/plugins/chartdldr_pi/chart_sources.xml"
+      ;;
+    macos)
+      require_file "${staging}/PlugIns/libchartdldr_pi.dylib"
+      require_file "${staging}/install-chartdldr-macos.sh"
+      require_file "${staging}/SharedSupport/plugins/chartdldr_pi/chart_sources.xml"
+      local lipo_out
+      lipo_out="$(lipo -info "${staging}/PlugIns/libchartdldr_pi.dylib" 2>&1)" || fail "lipo failed on macOS dylib"
+      echo "$lipo_out" | grep -q 'x86_64' || fail "macOS dylib missing x86_64: $lipo_out"
+      echo "$lipo_out" | grep -q 'arm64' || fail "macOS dylib missing arm64: $lipo_out"
+      if otool -L "${staging}/PlugIns/libchartdldr_pi.dylib" | grep -qE '/opt/homebrew|/usr/local/Cellar'; then
+        fail "macOS dylib links to Homebrew paths (not release-compatible)"
+      fi
+      ;;
+  esac
+
+  require_file "${staging}/INSTALL.txt"
+  grep -q '@CHARTDLDR_VERSION@' "${staging}/INSTALL.txt" && fail "INSTALL.txt still has placeholders"
+  echo "  OK: ${platform}"
+}
+
+declare -A SEEN=()
+for zip in "${ZIPS[@]}"; do
+  platform="$(platform_from_zip "$(basename "$zip")")"
+  verify_zip "$zip"
+  SEEN["$platform"]=1
+done
+
+for required in linux-amd64 linux-arm64 windows macos; do
+  [[ -n "${SEEN[$required]:-}" ]] || fail "missing artifact for platform: $required"
+done
+
+echo "All ${#ZIPS[@]} chartdldr artifacts verified."

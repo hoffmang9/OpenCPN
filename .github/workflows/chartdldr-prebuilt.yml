@@ -119,13 +119,76 @@ jobs:
           name: chartdldr-macos
           path: artifact/*.zip
 
-  release:
-    if: startsWith(github.ref, 'refs/tags/chartdldr-v')
+  verify-artifacts:
     needs:
       - linux-amd64
       - linux-arm64
       - windows
       - macos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Smoke-test packaged zips
+        run: |
+          chmod +x ./ci/verify-chartdldr-artifacts.sh
+          ./ci/verify-chartdldr-artifacts.sh artifacts
+
+  verify-install-macos:
+    needs:
+      - macos
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: chartdldr-macos
+          path: artifacts
+      - name: Run install script against fake OpenCPN.app
+        run: |
+          chmod +x ./ci/verify-chartdldr-install.sh
+          ./ci/verify-chartdldr-install.sh macos artifacts
+
+  verify-install-windows:
+    needs:
+      - windows
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: chartdldr-windows
+          path: artifacts
+      - name: Run install script against fake OpenCPN tree
+        shell: bash
+        run: |
+          chmod +x ./ci/verify-chartdldr-install.sh
+          ./ci/verify-chartdldr-install.sh windows artifacts
+
+  verify-install-linux:
+    needs:
+      - linux-arm64
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: chartdldr-linux-arm64
+          path: artifacts
+      - name: Run install script (arm64 artifact; amd64 assumed equivalent)
+        run: |
+          chmod +x ./ci/verify-chartdldr-install.sh
+          ./ci/verify-chartdldr-install.sh linux artifacts
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/chartdldr-v')
+    needs:
+      - verify-artifacts
+      - verify-install-macos
+      - verify-install-windows
+      - verify-install-linux
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
