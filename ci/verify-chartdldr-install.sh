@@ -52,7 +52,16 @@ assert_same_file() {
   local a="$1"
   local b="$2"
   [[ -f "$a" && -f "$b" ]] || fail "missing file for compare: $a or $b"
-  cmp -s "$a" "$b" || fail "installed file differs from artifact: $b"
+  if cmp -s "$a" "$b" 2>/dev/null; then
+    return
+  fi
+  local ha hb
+  ha="$(sha256sum "$a" | awk '{print $1}')"
+  hb="$(sha256sum "$b" | awk '{print $1}')"
+  if [[ "$ha" == "$hb" ]]; then
+    return
+  fi
+  fail "installed file differs from artifact (sizes $(wc -c <"$a") vs $(wc -c <"$b")): $b"
 }
 
 verify_macos() {
@@ -93,40 +102,39 @@ verify_macos() {
 verify_windows() {
   (
     set -euo pipefail
-    local zip staging tmpdir fake_ocpn staging_win fake_win
+    local zip staging work_root tmpdir fake_ocpn staging_win fake_win
     zip="$(find_platform_zip 'chartdldr_pi-*-windows.zip')"
-    tmpdir="$(mktemp -d)"
-    trap 'rm -rf "$tmpdir"' EXIT
+
+    # MSYS /tmp and cmd.exe paths diverge on Git Bash; use the workspace tree instead.
+    work_root="${GITHUB_WORKSPACE:-$PWD}/.ci-chartdldr-verify-$$"
+    tmpdir="${work_root}/work"
+    fake_ocpn="${work_root}/fake-opencpn"
+    rm -rf "$work_root"
+    mkdir -p "$tmpdir" "${fake_ocpn}/plugins/chartdldr_pi"
+    trap 'rm -rf "$work_root"' EXIT
 
     extract_artifact "$zip" "$tmpdir"
-  staging="$(find_staging_dir "$tmpdir")"
+    staging="$(find_staging_dir "$tmpdir")"
 
-  fake_ocpn="${tmpdir}/fake-opencpn"
-  mkdir -p "${fake_ocpn}/plugins/chartdldr_pi"
-  printf 'old\n' > "${fake_ocpn}/plugins/chartdldr_pi.dll"
-  printf 'stub\n' > "${fake_ocpn}/opencpn.exe"
+    printf 'old\n' > "${fake_ocpn}/plugins/chartdldr_pi.dll"
+    printf 'stub\n' > "${fake_ocpn}/opencpn.exe"
 
-  if command -v cygpath >/dev/null 2>&1; then
-    staging_win="$(cygpath -w "$staging")"
-    fake_win="$(cygpath -w "$fake_ocpn")"
-  else
-    staging_win="$staging"
-    fake_win="$fake_ocpn"
-  fi
+    staging_win="$(cd "$staging" && pwd -W)"
+    fake_win="$(cd "$fake_ocpn" && pwd -W)"
 
-  cmd.exe /c "cd /d \"${staging_win}\" && install-chartdldr-windows.bat \"${fake_win}\"" \
-    || fail "install-chartdldr-windows.bat failed"
+    cmd.exe //c "cd /d \"${staging_win}\" && install-chartdldr-windows.bat \"${fake_win}\"" \
+      || fail "install-chartdldr-windows.bat failed"
 
-  local lib_dst data_dst
-  lib_dst="${fake_ocpn}/plugins/chartdldr_pi.dll"
-  data_dst="${fake_ocpn}/plugins/chartdldr_pi/chart_sources.xml"
+    local lib_dst data_dst
+    lib_dst="${fake_ocpn}/plugins/chartdldr_pi.dll"
+    data_dst="${fake_ocpn}/plugins/chartdldr_pi/chart_sources.xml"
 
-  assert_same_file "${staging}/plugins/chartdldr_pi.dll" "$lib_dst"
-  [[ -f "$data_dst" ]] || fail "missing installed ${data_dst}"
+    assert_same_file "${staging}/plugins/chartdldr_pi.dll" "$lib_dst"
+    [[ -f "$data_dst" ]] || fail "missing installed ${data_dst}"
 
-  local backup
-  backup="$(find "${fake_ocpn}/plugins" -maxdepth 1 -name 'chartdldr_pi.dll.bak.*' | head -1)"
-  [[ -n "$backup" ]] || fail "expected backup of pre-existing plugin on Windows"
+    local backup
+    backup="$(find "${fake_ocpn}/plugins" -maxdepth 1 -name 'chartdldr_pi.dll.bak.*' | head -1)"
+    [[ -n "$backup" ]] || fail "expected backup of pre-existing plugin on Windows"
 
     echo "Windows install script OK ($(basename "$zip"))"
   )
