@@ -30,6 +30,42 @@ require_dir() {
   [[ -d "$path" ]] || fail "missing directory: $path"
 }
 
+extract_artifact() {
+  local archive="$1"
+  local dest="$2"
+  if command -v unzip >/dev/null 2>&1 && unzip -t "$archive" >/dev/null 2>&1; then
+    unzip -q "$archive" -d "$dest"
+    return
+  fi
+  if tar -tf "$archive" >/dev/null 2>&1; then
+    tar -xf "$archive" -C "$dest"
+    return
+  fi
+  fail "cannot extract archive: ${archive}"
+}
+
+verify_macos_dylib() {
+  local dylib="$1"
+  if command -v lipo >/dev/null 2>&1; then
+    local lipo_out
+    lipo_out="$(lipo -info "$dylib" 2>&1)" || fail "lipo failed on macOS dylib"
+    echo "$lipo_out" | grep -q 'x86_64' || fail "macOS dylib missing x86_64: $lipo_out"
+    echo "$lipo_out" | grep -q 'arm64' || fail "macOS dylib missing arm64: $lipo_out"
+  else
+    local mach
+    mach="$(file -b "$dylib")"
+    echo "$mach" | grep -q 'x86_64' || fail "expected x86_64 in universal dylib, got: $mach"
+    echo "$mach" | grep -q 'arm64' || fail "expected arm64 in universal dylib, got: $mach"
+  fi
+  if command -v otool >/dev/null 2>&1; then
+    if otool -L "$dylib" | grep -qE '/opt/homebrew|/usr/local/Cellar'; then
+      fail "macOS dylib links to Homebrew paths (not release-compatible)"
+    fi
+  elif strings "$dylib" 2>/dev/null | grep -qE '/opt/homebrew|/usr/local/Cellar'; then
+    fail "macOS dylib links to Homebrew paths (not release-compatible)"
+  fi
+}
+
 platform_from_zip() {
   local base="$1"
   case "$base" in
@@ -51,7 +87,7 @@ verify_zip() {
   tmpdir="$(mktemp -d)"
   trap 'rm -rf "$tmpdir"' RETURN
 
-  unzip -q "$zip" -d "$tmpdir"
+  extract_artifact "$zip" "$tmpdir"
   staging="$(find "$tmpdir" -maxdepth 1 -type d -name 'chartdldr_pi-*' | head -1)"
   [[ -n "$staging" ]] || fail "no staging directory in $zip"
 
@@ -79,13 +115,7 @@ verify_zip() {
       require_file "${staging}/PlugIns/libchartdldr_pi.dylib"
       require_file "${staging}/install-chartdldr-macos.sh"
       require_file "${staging}/SharedSupport/plugins/chartdldr_pi/chart_sources.xml"
-      local lipo_out
-      lipo_out="$(lipo -info "${staging}/PlugIns/libchartdldr_pi.dylib" 2>&1)" || fail "lipo failed on macOS dylib"
-      echo "$lipo_out" | grep -q 'x86_64' || fail "macOS dylib missing x86_64: $lipo_out"
-      echo "$lipo_out" | grep -q 'arm64' || fail "macOS dylib missing arm64: $lipo_out"
-      if otool -L "${staging}/PlugIns/libchartdldr_pi.dylib" | grep -qE '/opt/homebrew|/usr/local/Cellar'; then
-        fail "macOS dylib links to Homebrew paths (not release-compatible)"
-      fi
+      verify_macos_dylib "${staging}/PlugIns/libchartdldr_pi.dylib"
       ;;
   esac
 
