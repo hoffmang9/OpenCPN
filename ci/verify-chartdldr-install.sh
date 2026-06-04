@@ -136,13 +136,14 @@ verify_windows() {
     printf 'stub\n' > "${fake_ocpn}/opencpn.exe"
 
     fake_win="$(win_path "$fake_ocpn")"
+    fake_win="${fake_win//\//\\}"
 
-    # Run .bat from bash cwd; avoid cmd "cd /d path\" broken by trailing backslashes.
+    # Run .bat from bash cwd. Do not wrap the path in cmd quotes (bat would see literal " characters).
     MSYS2_ARG_CONV_EXCL='*'
     export MSYS2_ARG_CONV_EXCL
     (
       cd "$staging" || fail "cannot cd to staging: ${staging}"
-      cmd.exe /C "install-chartdldr-windows.bat \"${fake_win}\""
+      cmd.exe /C install-chartdldr-windows.bat "${fake_win}"
     ) || fail "install-chartdldr-windows.bat failed"
 
     local lib_dst data_dst
