@@ -96,6 +96,22 @@ sed -e "s/@CHARTDLDR_VERSION@/${VERSION}/g" \
     -e "s/@GIT_SHA@/${GIT_SHA}/g" \
     "${ROOT}/ci/chartdldr-prebuilt-INSTALL.txt" > "${INSTALL_TXT}"
 
+case "$PLATFORM" in
+  macos)
+    install_script="${ROOT}/ci/install-chartdldr-macos.sh"
+    ;;
+  linux-amd64|linux-arm64)
+    install_script="${ROOT}/ci/install-chartdldr-linux.sh"
+    ;;
+  windows)
+    install_script="${ROOT}/ci/install-chartdldr-windows.bat"
+    ;;
+esac
+if [[ -n "${install_script:-}" && -f "$install_script" ]]; then
+  cp "$install_script" "${STAGE_ROOT}/$(basename "$install_script")"
+  chmod +x "${STAGE_ROOT}/$(basename "$install_script")" 2>/dev/null || true
+fi
+
 chartdldr_create_zip() {
   local dir="$1"
   local zipfile="$2"
