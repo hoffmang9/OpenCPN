@@ -101,15 +101,7 @@ jobs:
         with:
           submodules: recursive
       - name: Install dependencies
-        run: |
-          brew list --versions cmake || brew install cmake
-          brew list --versions wxwidgets@3.2 || brew install wxwidgets@3.2
-          brew list --versions libarchive || brew install libarchive
-          brew list --versions gettext || brew install gettext
-          if [ -d /opt/homebrew/include ]; then
-            ln -sf /opt/homebrew/opt/libarchive/include/archive.h /opt/homebrew/include/archive.h || true
-            ln -sf /opt/homebrew/opt/libarchive/include/archive_entry.h /opt/homebrew/include/archive_entry.h || true
-          fi
+        run: ./ci/chartdldr-macos-deps.sh
       - name: Build chartdldr_pi
         run: ./ci/chartdldr-plugin-build.sh
       - name: Package artifact
