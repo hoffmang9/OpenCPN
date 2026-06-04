@@ -52,7 +52,8 @@ cmake -DOCPN_CI_BUILD=ON \
 
 # fixup_bundle install() expects all bundled plugin dylibs to exist.
 # Main app target is OpenCPN on macOS (opencpn on Linux/Windows).
-make -j"$(sysctl -n hw.physicalcpu)" OpenCPN chartdldr_pi dashboard_pi grib_pi wmm_pi
+# cmake --install also installs cli/ and glutil/ binaries.
+make -j"$(sysctl -n hw.physicalcpu)" OpenCPN opencpn-cmd opencpn-glutil chartdldr_pi dashboard_pi grib_pi wmm_pi
 
 cmake --install . --prefix "${INSTALL_PREFIX}"
 
