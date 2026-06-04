@@ -46,9 +46,18 @@ case "$PLATFORM" in
     DATA_PREFIX="SharedSupport/plugins/chartdldr_pi"
     ;;
   windows)
-    LIB_SRC="${ROOT}/build/Release/plugins/chartdldr_pi.dll"
-    if [[ ! -f "$LIB_SRC" ]]; then
-      LIB_SRC="${ROOT}/build/${CONFIGURATION:-Release}/plugins/chartdldr_pi.dll"
+    LIB_SRC=""
+    for candidate in \
+      "${ROOT}/build/plugins/chartdldr_pi/Release/chartdldr_pi.dll" \
+      "${ROOT}/build/Release/plugins/chartdldr_pi.dll" \
+      "${ROOT}/build/${CONFIGURATION:-Release}/plugins/chartdldr_pi.dll"; do
+      if [[ -f "$candidate" ]]; then
+        LIB_SRC="$candidate"
+        break
+      fi
+    done
+    if [[ -z "$LIB_SRC" ]]; then
+      LIB_SRC="$(find "${ROOT}/build" -name 'chartdldr_pi.dll' -type f 2>/dev/null | head -1 || true)"
     fi
     LIB_DST="plugins/chartdldr_pi.dll"
     DATA_PREFIX="plugins/chartdldr_pi"
@@ -59,8 +68,8 @@ case "$PLATFORM" in
     ;;
 esac
 
-if [[ ! -f "$LIB_SRC" ]]; then
-  echo "Plugin library not found: $LIB_SRC" >&2
+if [[ -z "${LIB_SRC:-}" || ! -f "$LIB_SRC" ]]; then
+  echo "Plugin library not found for platform ${PLATFORM}" >&2
   exit 1
 fi
 
