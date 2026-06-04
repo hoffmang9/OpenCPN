@@ -13,8 +13,15 @@ export DEPS_BUNDLE_DEST="${DEPS_BUNDLE_DEST:-/usr/local}"
 export ARCHS="${ARCHS:-arm64;x86_64}"
 export INSTALL_PREFIX="${INSTALL_PREFIX:-/tmp/opencpn-chartdldr}"
 
-brew list --versions cmake >/dev/null 2>&1 || brew install cmake
-brew list --versions gettext >/dev/null 2>&1 || brew install gettext
+for pkg in cmake gettext gpatch; do
+  brew list --versions "${pkg}" >/dev/null 2>&1 || brew install "${pkg}"
+done
+# ShapefileCpp patches require GNU patch (same as ci/universal-build-macos.sh).
+if [[ -d /opt/homebrew/opt/gpatch/libexec/gnubin ]]; then
+  export PATH="/opt/homebrew/opt/gpatch/libexec/gnubin:${PATH}"
+elif [[ -d /usr/local/opt/gpatch/libexec/gnubin ]]; then
+  export PATH="/usr/local/opt/gpatch/libexec/gnubin:${PATH}"
+fi
 
 if [[ ! -f "/tmp/${DEPS_BUNDLE_FILE}" ]]; then
   curl -fsSL -o "/tmp/${DEPS_BUNDLE_FILE}" "${DEPS_BUNDLE_REPO}/${DEPS_BUNDLE_FILE}"
@@ -44,7 +51,8 @@ cmake -DOCPN_CI_BUILD=ON \
   ..
 
 # fixup_bundle install() expects all bundled plugin dylibs to exist.
-make -j"$(sysctl -n hw.physicalcpu)" opencpn chartdldr_pi dashboard_pi grib_pi wmm_pi
+# Main app target is OpenCPN on macOS (opencpn on Linux/Windows).
+make -j"$(sysctl -n hw.physicalcpu)" OpenCPN chartdldr_pi dashboard_pi grib_pi wmm_pi
 
 cmake --install . --prefix "${INSTALL_PREFIX}"
 
