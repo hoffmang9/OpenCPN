@@ -17,6 +17,10 @@ fail() {
 
 [[ -n "$PLATFORM" ]] || usage
 
+to_slash() {
+  printf '%s' "${1//\\//}"
+}
+
 find_platform_zip() {
   local pattern="$1"
   local zip
@@ -28,6 +32,9 @@ find_platform_zip() {
 extract_artifact() {
   local archive="$1"
   local dest="$2"
+  archive="$(to_slash "$archive")"
+  dest="$(to_slash "$dest")"
+  mkdir -p "$dest"
   # Windows CI builds use bsdtar -a (.zip extension, not always unzip-friendly).
   if command -v unzip >/dev/null 2>&1 && unzip -t "$archive" >/dev/null 2>&1; then
     unzip -q "$archive" -d "$dest"
@@ -103,10 +110,10 @@ verify_windows() {
   (
     set -euo pipefail
     local zip staging work_root tmpdir fake_ocpn staging_win fake_win
-    zip="$(find_platform_zip 'chartdldr_pi-*-windows.zip')"
+    zip="$(to_slash "$(find_platform_zip 'chartdldr_pi-*-windows.zip')")"
 
     # MSYS /tmp and cmd.exe paths diverge on Git Bash; use the workspace tree instead.
-    work_root="${GITHUB_WORKSPACE:-$PWD}/.ci-chartdldr-verify-$$"
+    work_root="$(to_slash "${GITHUB_WORKSPACE:-$PWD}")/.ci-chartdldr-verify-$$"
     tmpdir="${work_root}/work"
     fake_ocpn="${work_root}/fake-opencpn"
     rm -rf "$work_root"
