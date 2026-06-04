@@ -8,6 +8,33 @@ OpenCPN install. Quit OpenCPN before copying files.
 Version: @CHARTDLDR_VERSION@
 Git: @GIT_SHA@
 
+macOS (official OpenCPN.app from opencpn.org)
+---------------------------------------------
+1. Unzip the archive.
+2. Right-click OpenCPN.app → Show Package Contents.
+3. Replace:
+     Contents/PlugIns/libchartdldr_pi.dylib
+4. Merge/replace:
+     Contents/SharedSupport/plugins/chartdldr_pi/
+   with the chartdldr_pi folder from the zip.
+
+The macOS build is a universal binary (Apple Silicon + Intel) linked
+against the same wxWidgets dependency bundle as upstream release builds.
+It is ad-hoc code signed for loading; replacing a plugin inside a signed
+.app does not require notarization of the dylib itself.
+
+Windows (32-bit OpenCPN installer)
+----------------------------------
+1. Unzip the archive.
+2. Copy chartdldr_pi.dll into:
+     C:\Program Files\OpenCPN\plugins\
+   (or your install location).
+3. Copy the chartdldr_pi\ folder into:
+     C:\Program Files\OpenCPN\plugins\chartdldr_pi\
+
+Built with the same MSVC + wxWidgets 3.2 cache as upstream Windows CI.
+Use the official 32-bit OpenCPN build, not a self-compiled 64-bit one.
+
 Linux (amd64 or arm64)
 ----------------------
 1. Unzip the archive.
@@ -18,32 +45,24 @@ Linux (amd64 or arm64)
      ~/.local/share/opencpn/plugins/chartdldr_pi/
    Layout in the zip matches that share/plugins/chartdldr_pi/ tree.
 
-Windows
--------
-1. Unzip the archive.
-2. Copy chartdldr_pi.dll into:
-     C:\Program Files\OpenCPN\plugins\
-   (or your install location).
-3. Copy the chartdldr_pi\ folder into:
-     C:\Program Files\OpenCPN\plugins\chartdldr_pi\
-
-macOS
------
-1. Unzip the archive.
-2. Right-click OpenCPN.app → Show Package Contents.
-3. Replace:
-     Contents/PlugIns/libchartdldr_pi.dylib
-4. Merge/replace:
-     Contents/SharedSupport/plugins/chartdldr_pi/
-   with the chartdldr_pi folder from the zip.
+Built on Ubuntu with the same library stack as OpenCPN CI (wxGTK 3.2).
+Works best with distro packages or self-built OpenCPN on a similar
+Ubuntu/Debian system. Not for Flatpak or Snap installs.
 
 Android and Flatpak
 -------------------
-Not built by this workflow. Use a matching desktop build or build from
-source (buildandroid / flatpak) on this branch.
+Not built by this workflow. Build from source on this branch if needed.
 
 Compatibility
 -------------
-Built against the OpenCPN tree on this branch. Use a recent OpenCPN 5.x
-build with plugin API 1.18 (opencpn_plugin_113). ABI mismatches show up
-as load failures in the Plugins list.
+Plugin API 1.18 (opencpn_plugin_113). Match the OpenCPN major version you
+run (5.x). ABI must match the host app:
+
+  Platform   Works with                          Avoid
+  macOS      Release .app from opencpn.org       Homebrew-only dev builds
+  Windows    Official 32-bit installer         64-bit self-built OpenCPN
+  Linux      .deb / self-build (wxGTK 3.2)       Flatpak, Snap, other wx
+
+If the library fails at startup, OpenCPN removes the file and shows an
+error dialog — that usually means ABI or architecture mismatch, not a
+bad copy path.

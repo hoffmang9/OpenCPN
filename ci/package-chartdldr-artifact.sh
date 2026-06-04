@@ -41,7 +41,16 @@ case "$PLATFORM" in
     DATA_PREFIX="share/opencpn/plugins/chartdldr_pi"
     ;;
   macos)
-    LIB_SRC="${ROOT}/build/plugins/chartdldr_pi/libchartdldr_pi.dylib"
+    LIB_SRC=""
+    for candidate in \
+      "${ROOT}/build/plugins/chartdldr_pi/libchartdldr_pi.dylib" \
+      "/tmp/opencpn-chartdldr/bin/OpenCPN.app/Contents/PlugIns/libchartdldr_pi.dylib" \
+      "/tmp/opencpn-chartdldr/bin/OpenCPN.app/Contents/Plugins/libchartdldr_pi.dylib"; do
+      if [[ -f "$candidate" ]]; then
+        LIB_SRC="$candidate"
+        break
+      fi
+    done
     LIB_DST="PlugIns/libchartdldr_pi.dylib"
     DATA_PREFIX="SharedSupport/plugins/chartdldr_pi"
     ;;

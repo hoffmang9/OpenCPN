@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Homebrew dependencies for chartdldr prebuilt macOS CI builds.
+# Legacy Homebrew deps (not ABI-compatible with release OpenCPN.app).
+# CI uses ci/chartdldr-plugin-build-macos-release.sh instead.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")"; pwd)"
