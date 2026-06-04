@@ -87,10 +87,37 @@ sed -e "s/@CHARTDLDR_VERSION@/${VERSION}/g" \
     -e "s/@GIT_SHA@/${GIT_SHA}/g" \
     "${ROOT}/ci/chartdldr-prebuilt-INSTALL.txt" > "${INSTALL_TXT}"
 
-(
-  cd "${ARTIFACT_DIR}"
-  rm -f "${STAGING}.zip"
-  zip -qr "${STAGING}.zip" "${STAGING}"
-)
+chartdldr_create_zip() {
+  local dir="$1"
+  local zipfile="$2"
+  local base name
+  base="$(dirname "$dir")"
+  name="$(basename "$dir")"
 
-echo "Created ${ARTIFACT_DIR}/${STAGING}.zip"
+  if command -v zip >/dev/null 2>&1; then
+    (cd "$base" && zip -qr "$zipfile" "$name")
+    return
+  fi
+
+  # GitHub windows-2022 runners lack zip(1) in bash; bsdtar is available.
+  if tar --version >/dev/null 2>&1; then
+    rm -f "$zipfile"
+    tar -a -c -f "$zipfile" -C "$base" "$name"
+    return
+  fi
+
+  if command -v powershell.exe >/dev/null 2>&1; then
+    powershell.exe -NoProfile -Command \
+      "Compress-Archive -Path '${dir}' -DestinationPath '${zipfile}' -Force"
+    return
+  fi
+
+  echo "No zip, tar, or powershell available to create ${zipfile}" >&2
+  exit 1
+}
+
+ZIP_PATH="${ARTIFACT_DIR}/${STAGING}.zip"
+rm -f "${ZIP_PATH}"
+chartdldr_create_zip "${STAGE_ROOT}" "${ZIP_PATH}"
+
+echo "Created ${ZIP_PATH}"
