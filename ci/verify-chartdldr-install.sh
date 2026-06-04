@@ -21,6 +21,15 @@ to_slash() {
   printf '%s' "${1//\\//}"
 }
 
+# pwd -W often ends with '\' which breaks cmd quoting: cd /d "D:\path\"
+win_path() {
+  local p
+  p="$(cd "$1" && pwd -W | tr -d '\r\n')"
+  p="${p%/}"
+  p="${p%\\}"
+  printf '%s' "$p"
+}
+
 find_platform_zip() {
   local pattern="$1"
   local zip
@@ -121,16 +130,20 @@ verify_windows() {
     trap 'rm -rf "$work_root"' EXIT
 
     extract_artifact "$zip" "$tmpdir"
-    staging="$(find_staging_dir "$tmpdir")"
+    staging="$(to_slash "$(find_staging_dir "$tmpdir")")"
 
     printf 'old\n' > "${fake_ocpn}/plugins/chartdldr_pi.dll"
     printf 'stub\n' > "${fake_ocpn}/opencpn.exe"
 
-    staging_win="$(cd "$staging" && pwd -W)"
-    fake_win="$(cd "$fake_ocpn" && pwd -W)"
+    fake_win="$(win_path "$fake_ocpn")"
 
-    cmd.exe //c "cd /d \"${staging_win}\" && install-chartdldr-windows.bat \"${fake_win}\"" \
-      || fail "install-chartdldr-windows.bat failed"
+    # Run .bat from bash cwd; avoid cmd "cd /d path\" broken by trailing backslashes.
+    MSYS2_ARG_CONV_EXCL='*'
+    export MSYS2_ARG_CONV_EXCL
+    (
+      cd "$staging" || fail "cannot cd to staging: ${staging}"
+      cmd.exe /C "install-chartdldr-windows.bat \"${fake_win}\""
+    ) || fail "install-chartdldr-windows.bat failed"
 
     local lib_dst data_dst
     lib_dst="${fake_ocpn}/plugins/chartdldr_pi.dll"
