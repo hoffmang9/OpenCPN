@@ -153,9 +153,10 @@ verify_windows() {
     assert_same_file "${staging}/plugins/chartdldr_pi.dll" "$lib_dst"
     [[ -f "$data_dst" ]] || fail "missing installed ${data_dst}"
 
-    local backup
-    backup="$(find "${fake_ocpn}/plugins" -maxdepth 1 -name 'chartdldr_pi.dll.bak.*' | head -1)"
-    [[ -n "$backup" ]] || fail "expected backup of pre-existing plugin on Windows"
+    local -a backups=()
+    shopt -s nullglob
+    backups=( "${fake_ocpn}/plugins"/chartdldr_pi.dll.bak* )
+    [[ ${#backups[@]} -gt 0 ]] || fail "expected backup of pre-existing plugin on Windows"
 
     echo "Windows install script OK ($(basename "$zip"))"
   )

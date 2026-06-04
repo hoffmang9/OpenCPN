@@ -24,7 +24,7 @@ if not exist "%OCPN_DIR%\opencpn.exe" (
   exit /b 1
 )
 
-tasklist /FI "IMAGENAME eq opencpn.exe" 2>nul | find /I "opencpn.exe" >nul
+tasklist /FI "IMAGENAME eq opencpn.exe" 2>nul | %SystemRoot%\System32\find.exe /I "opencpn.exe" >nul
 if %ERRORLEVEL%==0 (
   echo error: OpenCPN is running — quit it completely, then run this script again.
   exit /b 1
@@ -34,7 +34,9 @@ set "LIB_DST=%OCPN_DIR%\plugins\chartdldr_pi.dll"
 set "DATA_DST=%OCPN_DIR%\plugins\chartdldr_pi"
 
 if exist "%LIB_DST%" (
-  for /f %%t in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMddHHmmss"') do set "STAMP=%%t"
+  set "STAMP="
+  for /f "delims=" %%t in ('powershell.exe -NoProfile -Command "(Get-Date).ToString('yyyyMMddHHmmss')"') do set "STAMP=%%t"
+  if not defined STAMP set "STAMP=backup"
   echo Backing up existing plugin to "%LIB_DST%.bak.%STAMP%"
   copy /Y "%LIB_DST%" "%LIB_DST%.bak.%STAMP%" >nul
 )
