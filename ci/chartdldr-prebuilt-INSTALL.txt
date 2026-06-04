@@ -8,8 +8,26 @@ OpenCPN install. Quit OpenCPN before copying files.
 Version: @CHARTDLDR_VERSION@
 Git: @GIT_SHA@
 
+Quick install (recommended)
+---------------------------
+Unzip the archive, quit OpenCPN completely, then run the installer in the
+same folder:
+
+  macOS:    ./install-chartdldr-macos.sh
+            ./install-chartdldr-macos.sh "/path/to/OpenCPN.app"   (non-default)
+
+  Linux:    ./install-chartdldr-linux.sh
+
+  Windows:  install-chartdldr-windows.bat
+            install-chartdldr-windows.bat "D:\Path\To\OpenCPN"   (non-default)
+
+The scripts back up an existing plugin library, refuse to run while OpenCPN
+is open, and use the layout produced by CI.
+
 macOS (official OpenCPN.app from opencpn.org)
 ---------------------------------------------
+Manual steps (if you prefer not to use the script):
+
 1. Unzip the archive.
 2. Right-click OpenCPN.app → Show Package Contents.
 3. Replace:
@@ -25,6 +43,8 @@ It is ad-hoc code signed for loading; replacing a plugin inside a signed
 
 Windows (32-bit OpenCPN installer)
 ----------------------------------
+Manual steps:
+
 1. Unzip the archive.
 2. Copy chartdldr_pi.dll into:
      C:\Program Files\OpenCPN\plugins\
@@ -37,6 +57,8 @@ Use the official 32-bit OpenCPN build, not a self-compiled 64-bit one.
 
 Linux (amd64 or arm64)
 ----------------------
+Manual steps:
+
 1. Unzip the archive.
 2. Copy libchartdldr_pi.so into your OpenCPN plugin directory, for example:
      ~/.local/lib/opencpn/plugins/
