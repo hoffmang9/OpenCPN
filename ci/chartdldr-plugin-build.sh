@@ -18,15 +18,8 @@ case "$(uname -s)" in
     cmake --build . --target chartdldr_pi -j "$(nproc)"
     ;;
   Darwin)
-    cmake -DOCPN_CI_BUILD=ON \
-      -DOCPN_VERBOSE=OFF \
-      -DOCPN_USE_SYSTEM_LIBARCHIVE=OFF \
-      -DCMAKE_INSTALL_PREFIX=/tmp/opencpn \
-      -DOCPN_RELEASE=0 \
-      -DOCPN_BUILD_TEST=OFF \
-      -DOCPN_BUILD_SAMPLE=OFF \
-      ..
-    make chartdldr_pi -j "$(sysctl -n hw.physicalcpu 2>/dev/null || echo 2)"
+    echo "On macOS use ci/chartdldr-plugin-build-macos-release.sh for release .app-compatible builds." >&2
+    exit 1
     ;;
   *)
     echo "Unsupported host for chartdldr-plugin-build.sh: $(uname -s)" >&2
