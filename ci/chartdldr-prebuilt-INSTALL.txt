@@ -10,13 +10,14 @@ Git: @GIT_SHA@
 
 Quick install (recommended)
 ---------------------------
-Unzip the archive, quit OpenCPN completely, then run the installer in the
+Extract the archive, quit OpenCPN completely, then run the installer in the
 same folder:
 
   macOS:    ./install-chartdldr-macos.sh
             ./install-chartdldr-macos.sh "/path/to/OpenCPN.app"   (non-default)
 
-  Linux:    ./install-chartdldr-linux.sh
+  Linux:    tar xzf chartdldr_pi-*-linux-*.tgz && cd chartdldr_pi-*-linux-*
+            ./install-chartdldr-linux.sh
 
   Windows:  install-chartdldr-windows.bat
             install-chartdldr-windows.bat "D:\Path\To\OpenCPN"   (non-default)
@@ -57,15 +58,17 @@ Use the official 32-bit OpenCPN build, not a self-compiled 64-bit one.
 
 Linux (amd64 or arm64)
 ----------------------
+Download the `.tgz` for your architecture (not a zip).
+
 Manual steps:
 
-1. Unzip the archive.
+1. Extract: tar xzf chartdldr_pi-*-linux-*.tgz
 2. Copy libchartdldr_pi.so into your OpenCPN plugin directory, for example:
      ~/.local/lib/opencpn/plugins/
    or the path shown in Help → About → Plugin folder.
 3. Copy the chartdldr_pi/ tree (data and translations) next to other plugins:
      ~/.local/share/opencpn/plugins/chartdldr_pi/
-   Layout in the zip matches that share/plugins/chartdldr_pi/ tree.
+   Layout in the tarball matches that share/plugins/chartdldr_pi/ tree.
 
 Built on Ubuntu with the same library stack as OpenCPN CI (wxGTK 3.2).
 Works best with distro packages or self-built OpenCPN on a similar

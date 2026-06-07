@@ -30,12 +30,12 @@ win_path() {
   printf '%s' "$p"
 }
 
-find_platform_zip() {
+find_platform_artifact() {
   local pattern="$1"
-  local zip
-  zip="$(find "$ARTIFACT_ROOT" -type f -name "$pattern" 2>/dev/null | head -1)"
-  [[ -n "$zip" && -f "$zip" ]] || fail "no zip matching ${pattern} under ${ARTIFACT_ROOT}"
-  echo "$zip"
+  local archive
+  archive="$(find "$ARTIFACT_ROOT" -type f -name "$pattern" 2>/dev/null | head -1)"
+  [[ -n "$archive" && -f "$archive" ]] || fail "no archive matching ${pattern} under ${ARTIFACT_ROOT}"
+  echo "$archive"
 }
 
 extract_artifact() {
@@ -83,12 +83,12 @@ assert_same_file() {
 verify_macos() {
   (
     set -euo pipefail
-    local zip staging tmpdir fake_app
-    zip="$(find_platform_zip 'chartdldr_pi-*-macos.zip')"
+    local archive staging tmpdir fake_app
+    archive="$(find_platform_artifact 'chartdldr_pi-*-macos.zip')"
     tmpdir="$(mktemp -d)"
     trap 'rm -rf "$tmpdir"' EXIT
 
-    extract_artifact "$zip" "$tmpdir"
+    extract_artifact "$archive" "$tmpdir"
   staging="$(find_staging_dir "$tmpdir")"
   [[ -x "${staging}/install-chartdldr-macos.sh" ]] || chmod +x "${staging}/install-chartdldr-macos.sh"
 
@@ -111,15 +111,15 @@ verify_macos() {
   backup="$(find "${fake_app}/Contents/PlugIns" -maxdepth 1 -name 'libchartdldr_pi.dylib.bak.*' | head -1)"
   [[ -n "$backup" ]] || fail "expected backup of pre-existing plugin on macOS"
 
-    echo "macOS install script OK ($(basename "$zip"))"
+    echo "macOS install script OK ($(basename "$archive"))"
   )
 }
 
 verify_windows() {
   (
     set -euo pipefail
-    local zip staging work_root tmpdir fake_ocpn staging_win fake_win
-    zip="$(to_slash "$(find_platform_zip 'chartdldr_pi-*-windows.zip')")"
+    local archive staging work_root tmpdir fake_ocpn staging_win fake_win
+    archive="$(to_slash "$(find_platform_artifact 'chartdldr_pi-*-windows.zip')")"
 
     # MSYS /tmp and cmd.exe paths diverge on Git Bash; use the workspace tree instead.
     work_root="$(to_slash "${GITHUB_WORKSPACE:-$PWD}")/.ci-chartdldr-verify-$$"
@@ -129,7 +129,7 @@ verify_windows() {
     mkdir -p "$tmpdir" "${fake_ocpn}/plugins/chartdldr_pi"
     trap 'rm -rf "$work_root"' EXIT
 
-    extract_artifact "$zip" "$tmpdir"
+    extract_artifact "$archive" "$tmpdir"
     staging="$(to_slash "$(find_staging_dir "$tmpdir")")"
 
     printf 'old\n' > "${fake_ocpn}/plugins/chartdldr_pi.dll"
@@ -158,19 +158,19 @@ verify_windows() {
     backups=( "${fake_ocpn}/plugins"/chartdldr_pi.dll.bak* )
     [[ ${#backups[@]} -gt 0 ]] || fail "expected backup of pre-existing plugin on Windows"
 
-    echo "Windows install script OK ($(basename "$zip"))"
+    echo "Windows install script OK ($(basename "$archive"))"
   )
 }
 
 verify_linux() {
   (
     set -euo pipefail
-    local zip staging tmpdir home lib_dst data_dst backup
-    zip="$(find_platform_zip 'chartdldr_pi-*-linux-arm64.zip')"
+    local archive staging tmpdir home lib_dst data_dst backup
+    archive="$(find_platform_artifact 'chartdldr_pi-*-linux-*.tgz')"
     tmpdir="$(mktemp -d)"
     trap 'rm -rf "$tmpdir"' EXIT
 
-    extract_artifact "$zip" "$tmpdir"
+    extract_artifact "$archive" "$tmpdir"
   staging="$(find_staging_dir "$tmpdir")"
   [[ -x "${staging}/install-chartdldr-linux.sh" ]] || chmod +x "${staging}/install-chartdldr-linux.sh"
 
@@ -191,7 +191,7 @@ verify_linux() {
   backup="$(find "${home}/.local/lib/opencpn/plugins" -maxdepth 1 -name 'libchartdldr_pi.so.bak.*' | head -1)"
   [[ -n "$backup" ]] || fail "expected backup of pre-existing plugin on Linux"
 
-    echo "Linux install script OK ($(basename "$zip"))"
+    echo "Linux install script OK ($(basename "$archive"))"
   )
 }
 

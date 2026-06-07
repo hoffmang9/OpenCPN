@@ -39,7 +39,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: chartdldr-linux-amd64
-          path: artifact/*.zip
+          path: artifact/*.tgz
 
   linux-arm64:
     runs-on: ubuntu-24.04-arm
@@ -61,7 +61,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: chartdldr-linux-arm64
-          path: artifact/*.zip
+          path: artifact/*.tgz
 
   windows:
     runs-on: windows-2022
@@ -131,7 +131,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
-      - name: Smoke-test packaged zips
+      - name: Smoke-test packaged archives
         run: |
           chmod +x ./ci/verify-chartdldr-artifacts.sh
           ./ci/verify-chartdldr-artifacts.sh artifacts
@@ -203,14 +203,17 @@ jobs:
             Prebuilt **chartdldr_pi** from branch `cursor/chartdldr-prebuilt-release`
             (scheduled bulk update fork build).
 
-            Download the zip for your platform, read `INSTALL.txt` inside, quit OpenCPN,
-            then copy the library and `chartdldr_pi` data folder into your install.
+            Download the archive for your platform (.tgz on Linux, .zip on Windows/macOS),
+            read `INSTALL.txt` inside, quit OpenCPN, then run the install script or copy
+            files manually.
 
-            **Assets:** Linux amd64, Linux arm64, Windows (32-bit OpenCPN),
-            macOS universal (Intel + Apple Silicon, release .app compatible).
+            **Assets:** Linux amd64/arm64 (.tgz), Windows (.zip, 32-bit OpenCPN),
+            macOS universal (.zip, Intel + Apple Silicon, release .app compatible).
             Android/Flatpak are not included; build from source on this branch if needed.
 
             Commit: ${{ github.sha }}
-          files: dist/*.zip
+          files: |
+            dist/*.zip
+            dist/*.tgz
           draft: false
           prerelease: true

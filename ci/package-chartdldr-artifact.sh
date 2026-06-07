@@ -112,6 +112,16 @@ if [[ -n "${install_script:-}" && -f "$install_script" ]]; then
   chmod +x "${STAGE_ROOT}/$(basename "$install_script")" 2>/dev/null || true
 fi
 
+chartdldr_create_tgz() {
+  local dir="$1"
+  local tgzfile="$2"
+  local base name
+  base="$(dirname "$dir")"
+  name="$(basename "$dir")"
+  rm -f "$tgzfile"
+  tar -czf "$tgzfile" -C "$base" "$name"
+}
+
 chartdldr_create_zip() {
   local dir="$1"
   local zipfile="$2"
@@ -141,8 +151,16 @@ chartdldr_create_zip() {
   exit 1
 }
 
-ZIP_PATH="${ARTIFACT_DIR}/${STAGING}.zip"
-rm -f "${ZIP_PATH}"
-chartdldr_create_zip "${STAGE_ROOT}" "${ZIP_PATH}"
+case "$PLATFORM" in
+  linux-amd64|linux-arm64)
+    ARCHIVE_PATH="${ARTIFACT_DIR}/${STAGING}.tgz"
+    chartdldr_create_tgz "${STAGE_ROOT}" "${ARCHIVE_PATH}"
+    ;;
+  *)
+    ARCHIVE_PATH="${ARTIFACT_DIR}/${STAGING}.zip"
+    rm -f "${ARCHIVE_PATH}"
+    chartdldr_create_zip "${STAGE_ROOT}" "${ARCHIVE_PATH}"
+    ;;
+esac
 
-echo "Created ${ZIP_PATH}"
+echo "Created ${ARCHIVE_PATH}"

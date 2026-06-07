@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke-test chartdldr prebuilt zips: unpack in a clean dir and verify layout.
+# Smoke-test chartdldr prebuilt archives: unpack in a clean dir and verify layout.
 set -euo pipefail
 
 ARTIFACT_ROOT="${1:-artifact}"
@@ -9,9 +9,11 @@ if [[ ! -d "$ARTIFACT_ROOT" ]]; then
   exit 1
 fi
 
-mapfile -t ZIPS < <(find "$ARTIFACT_ROOT" -type f -name 'chartdldr_pi-*.zip' | sort)
-if [[ ${#ZIPS[@]} -eq 0 ]]; then
-  echo "No chartdldr_pi-*.zip files under ${ARTIFACT_ROOT}" >&2
+mapfile -t ARCHIVES < <(
+  find "$ARTIFACT_ROOT" -type f \( -name 'chartdldr_pi-*.zip' -o -name 'chartdldr_pi-*.tgz' \) | sort
+)
+if [[ ${#ARCHIVES[@]} -eq 0 ]]; then
+  echo "No chartdldr_pi-*.zip or chartdldr_pi-*.tgz files under ${ARTIFACT_ROOT}" >&2
   exit 1
 fi
 
@@ -66,32 +68,32 @@ verify_macos_dylib() {
   fi
 }
 
-platform_from_zip() {
+platform_from_archive() {
   local base="$1"
   case "$base" in
-    *-linux-amd64.zip) echo linux-amd64 ;;
-    *-linux-arm64.zip) echo linux-arm64 ;;
+    *-linux-amd64.tgz) echo linux-amd64 ;;
+    *-linux-arm64.tgz) echo linux-arm64 ;;
     *-windows.zip) echo windows ;;
     *-macos.zip) echo macos ;;
     *) echo unknown ;;
   esac
 }
 
-verify_zip() {
-  local zip="$1"
+verify_archive() {
+  local archive="$1"
   local platform
-  platform="$(platform_from_zip "$(basename "$zip")")"
-  [[ "$platform" != unknown ]] || fail "unrecognized zip name: $zip"
+  platform="$(platform_from_archive "$(basename "$archive")")"
+  [[ "$platform" != unknown ]] || fail "unrecognized archive name: $archive"
 
   local tmpdir staging
   tmpdir="$(mktemp -d)"
   trap 'rm -rf "$tmpdir"' RETURN
 
-  extract_artifact "$zip" "$tmpdir"
+  extract_artifact "$archive" "$tmpdir"
   staging="$(find "$tmpdir" -maxdepth 1 -type d -name 'chartdldr_pi-*' | head -1)"
-  [[ -n "$staging" ]] || fail "no staging directory in $zip"
+  [[ -n "$staging" ]] || fail "no staging directory in $archive"
 
-  echo "Verifying ${platform} ($(basename "$zip"))"
+  echo "Verifying ${platform} ($(basename "$archive"))"
 
   case "$platform" in
     linux-amd64|linux-arm64)
@@ -125,9 +127,9 @@ verify_zip() {
 }
 
 declare -A SEEN=()
-for zip in "${ZIPS[@]}"; do
-  platform="$(platform_from_zip "$(basename "$zip")")"
-  verify_zip "$zip"
+for archive in "${ARCHIVES[@]}"; do
+  platform="$(platform_from_archive "$(basename "$archive")")"
+  verify_archive "$archive"
   SEEN["$platform"]=1
 done
 
@@ -135,4 +137,4 @@ for required in linux-amd64 linux-arm64 windows macos; do
   [[ -n "${SEEN[$required]:-}" ]] || fail "missing artifact for platform: $required"
 done
 
-echo "All ${#ZIPS[@]} chartdldr artifacts verified."
+echo "All ${#ARCHIVES[@]} chartdldr artifacts verified."

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install chartdldr_pi from an unzipped Linux release artifact (user plugin paths).
+# Install chartdldr_pi from an extracted Linux release tarball (user plugin paths).
 set -euo pipefail
 
 die() { echo "error: $*" >&2; exit 1; }
@@ -16,7 +16,7 @@ if [[ -f "/.flatpak-info" ]] || [[ -d "${HOME}/.var/app/org.opencpn.OpenCPN" ]];
   die "Flatpak OpenCPN detected — these binaries are not compatible; build from source instead"
 fi
 if [[ ! -f "$LIB_SRC" ]]; then
-  die "missing ${LIB_SRC} — run this script from the unzipped Linux artifact folder"
+  die "missing ${LIB_SRC} — run this script from the extracted Linux .tgz folder"
 fi
 if [[ ! -d "$DATA_SRC" ]]; then
   die "missing ${DATA_SRC}"
