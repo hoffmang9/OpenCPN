@@ -16,6 +16,8 @@ same folder:
   macOS:    ./install-chartdldr-macos.sh
             ./install-chartdldr-macos.sh "/path/to/OpenCPN.app"   (non-default)
 
+            Installs into /Applications/OpenCPN.app prompt for your password (sudo).
+
   Linux:    tar xzf chartdldr_pi-*-linux-*.tgz && cd chartdldr_pi-*-linux-*
             ./install-chartdldr-linux.sh
 
@@ -27,6 +29,10 @@ is open, and use the layout produced by CI.
 
 macOS (official OpenCPN.app from opencpn.org)
 ---------------------------------------------
+The install script uses sudo when OpenCPN lives under /Applications (typical
+for the official .dmg installer). Quit OpenCPN first; you will be prompted
+for your login password.
+
 Manual steps (if you prefer not to use the script):
 
 1. Unzip the archive.

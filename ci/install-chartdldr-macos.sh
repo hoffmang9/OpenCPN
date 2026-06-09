@@ -26,16 +26,27 @@ fi
 
 PLUGIN_DST="${OCPN_APP}/Contents/PlugIns/libchartdldr_pi.dylib"
 DATA_DST="${OCPN_APP}/Contents/SharedSupport/plugins/chartdldr_pi"
+PLUGIN_DIR="$(dirname "$PLUGIN_DST")"
+
+# Official installs under /Applications are root-owned; use sudo only when needed.
+install_as_root() {
+  if [[ -w "$PLUGIN_DIR" && ( ! -f "$PLUGIN_DST" || -w "$PLUGIN_DST" ) ]]; then
+    "$@"
+  else
+    echo "Installing into ${OCPN_APP} requires administrator privileges."
+    sudo "$@"
+  fi
+}
 
 if [[ -f "$PLUGIN_DST" ]]; then
   backup="${PLUGIN_DST}.bak.$(date +%Y%m%d%H%M%S)"
   echo "Backing up existing plugin to ${backup}"
-  cp -p "$PLUGIN_DST" "$backup"
+  install_as_root cp -p "$PLUGIN_DST" "$backup"
 fi
 
-mkdir -p "$(dirname "$PLUGIN_DST")" "$DATA_DST"
-cp -p "$LIB_SRC" "$PLUGIN_DST"
-cp -R "${DATA_SRC}/." "$DATA_DST/"
+install_as_root mkdir -p "$PLUGIN_DIR" "$DATA_DST"
+install_as_root cp -p "$LIB_SRC" "$PLUGIN_DST"
+install_as_root cp -R "${DATA_SRC}/." "$DATA_DST/"
 
 if otool -L "$PLUGIN_DST" 2>/dev/null | grep -q /opt/homebrew/opt/wxwidgets; then
   echo "warning: plugin still links to Homebrew wx — use a release-built macOS zip, not an old artifact"
