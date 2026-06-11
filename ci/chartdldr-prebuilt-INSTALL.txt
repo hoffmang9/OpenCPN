@@ -1,0 +1,99 @@
+Chart Downloader plugin (prebuilt) — fork test build
+====================================================
+
+These archives contain only the chartdldr_pi shared library and data/
+files from this fork. They replace the bundled plugin in an existing
+OpenCPN install. Quit OpenCPN before copying files.
+
+Version: @CHARTDLDR_VERSION@
+Git: @GIT_SHA@
+
+Quick install (recommended)
+---------------------------
+Extract the archive, quit OpenCPN completely, then run the installer in the
+same folder:
+
+  macOS:    ./install-chartdldr-macos.sh
+            ./install-chartdldr-macos.sh "/path/to/OpenCPN.app"   (non-default)
+
+            Installs into /Applications/OpenCPN.app prompt for your password (sudo).
+
+  Linux:    tar xzf chartdldr_pi-*-linux-*.tgz && cd chartdldr_pi-*-linux-*
+            ./install-chartdldr-linux.sh
+
+  Windows:  install-chartdldr-windows.bat
+            install-chartdldr-windows.bat "D:\Path\To\OpenCPN"   (non-default)
+
+The scripts back up an existing plugin library, refuse to run while OpenCPN
+is open, and use the layout produced by CI.
+
+macOS (official OpenCPN.app from opencpn.org)
+---------------------------------------------
+The install script uses sudo when OpenCPN lives under /Applications (typical
+for the official .dmg installer). Quit OpenCPN first; you will be prompted
+for your login password.
+
+Manual steps (if you prefer not to use the script):
+
+1. Unzip the archive.
+2. Right-click OpenCPN.app → Show Package Contents.
+3. Replace:
+     Contents/PlugIns/libchartdldr_pi.dylib
+4. Merge/replace:
+     Contents/SharedSupport/plugins/chartdldr_pi/
+   with the chartdldr_pi folder from the zip.
+
+The macOS build is a universal binary (Apple Silicon + Intel) linked
+against the same wxWidgets dependency bundle as upstream release builds.
+It is ad-hoc code signed for loading; replacing a plugin inside a signed
+.app does not require notarization of the dylib itself.
+
+Windows (32-bit OpenCPN installer)
+----------------------------------
+Manual steps:
+
+1. Unzip the archive.
+2. Copy chartdldr_pi.dll into:
+     C:\Program Files\OpenCPN\plugins\
+   (or your install location).
+3. Copy the chartdldr_pi\ folder into:
+     C:\Program Files\OpenCPN\plugins\chartdldr_pi\
+
+Built with the same MSVC + wxWidgets 3.2 cache as upstream Windows CI.
+Use the official 32-bit OpenCPN build, not a self-compiled 64-bit one.
+
+Linux (amd64 or arm64)
+----------------------
+Download the `.tgz` for your architecture (not a zip).
+
+Manual steps:
+
+1. Extract: tar xzf chartdldr_pi-*-linux-*.tgz
+2. Copy libchartdldr_pi.so into your OpenCPN plugin directory, for example:
+     ~/.local/lib/opencpn/plugins/
+   or the path shown in Help → About → Plugin folder.
+3. Copy the chartdldr_pi/ tree (data and translations) next to other plugins:
+     ~/.local/share/opencpn/plugins/chartdldr_pi/
+   Layout in the tarball matches that share/plugins/chartdldr_pi/ tree.
+
+Built on Ubuntu with the same library stack as OpenCPN CI (wxGTK 3.2).
+Works best with distro packages or self-built OpenCPN on a similar
+Ubuntu/Debian system. Not for Flatpak or Snap installs.
+
+Android and Flatpak
+-------------------
+Not built by this workflow. Build from source on this branch if needed.
+
+Compatibility
+-------------
+Plugin API 1.18 (opencpn_plugin_113). Match the OpenCPN major version you
+run (5.x). ABI must match the host app:
+
+  Platform   Works with                          Avoid
+  macOS      Release .app from opencpn.org       Homebrew-only dev builds
+  Windows    Official 32-bit installer         64-bit self-built OpenCPN
+  Linux      .deb / self-build (wxGTK 3.2)       Flatpak, Snap, other wx
+
+If the library fails at startup, OpenCPN removes the file and shows an
+error dialog — that usually means ABI or architecture mismatch, not a
+bad copy path.

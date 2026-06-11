@@ -1,0 +1,224 @@
+---
+# Build chartdldr_pi drop-in libraries for fork testers.
+# Runs on pull requests to the scheduled bulk-update branch, or on chartdldr-v* tags.
+name: Chart Downloader prebuilt
+
+on:
+  push:
+    tags:
+      - chartdldr-v*
+  pull_request:
+    branches:
+      - cursor/chartdldr-scheduled-bulk-update
+    paths:
+      - .github/workflows/chartdldr-prebuilt.yml
+      - ci/**
+      - plugins/chartdldr_pi/**
+
+env:
+  BUILD_TYPE: Release
+  CONFIGURATION: Release
+
+permissions:
+  contents: write
+
+jobs:
+  linux-amd64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: ./ci/github-pre-build.sh
+      - name: Build chartdldr_pi
+        run: ./ci/chartdldr-plugin-build.sh
+      - name: Package artifact
+        run: |
+          VERSION="${GITHUB_REF_NAME#chartdldr-v}"
+          if [[ "$VERSION" == "$GITHUB_REF_NAME" ]]; then
+            VERSION="$(grep VERSION_MAJOR plugins/chartdldr_pi/CMakeLists.txt | head -1 | sed 's/.*"\(.*\)".*/\1/').$(grep VERSION_MINOR plugins/chartdldr_pi/CMakeLists.txt | head -1 | sed 's/.*"\(.*\)".*/\1/').$(grep VERSION_PATCH plugins/chartdldr_pi/CMakeLists.txt | head -1 | sed 's/.*"\(.*\)".*/\1/')-pre.${GITHUB_RUN_NUMBER}"
+          fi
+          ./ci/package-chartdldr-artifact.sh linux-amd64 "$VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chartdldr-linux-amd64
+          path: artifact/*.tgz
+
+  linux-arm64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install dependencies
+        run: ./ci/github-pre-build.sh
+      - name: Build chartdldr_pi
+        run: ./ci/chartdldr-plugin-build.sh
+      - name: Package artifact
+        run: |
+          VERSION="${GITHUB_REF_NAME#chartdldr-v}"
+          if [[ "$VERSION" == "$GITHUB_REF_NAME" ]]; then
+            VERSION="$(grep VERSION_MAJOR plugins/chartdldr_pi/CMakeLists.txt | head -1 | sed 's/.*"\(.*\)".*/\1/').$(grep VERSION_MINOR plugins/chartdldr_pi/CMakeLists.txt | head -1 | sed 's/.*"\(.*\)".*/\1/').$(grep VERSION_PATCH plugins/chartdldr_pi/CMakeLists.txt | head -1 | sed 's/.*"\(.*\)".*/\1/')-pre.${GITHUB_RUN_NUMBER}"
+          fi
+          ./ci/package-chartdldr-artifact.sh linux-arm64 "$VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chartdldr-linux-arm64
+          path: artifact/*.tgz
+
+  windows:
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Set up MSVC
+        uses: seanmiddleditch/gha-setup-vsdevenv@v3
+        with:
+          host_arch: x86
+          arch: win32
+      - name: Build chartdldr_pi
+        shell: cmd
+        env:
+          CONFIGURATION: Release
+        run: ci\chartdldr-plugin-build-win.bat
+      - name: Package artifact
+        run: |
+          VERSION="${GITHUB_REF_NAME#chartdldr-v}"
+          if [[ "$VERSION" == "$GITHUB_REF_NAME" ]]; then
+            VERSION="$(grep VERSION_MAJOR plugins/chartdldr_pi/CMakeLists.txt | head -1 | sed 's/.*"\(.*\)".*/\1/').$(grep VERSION_MINOR plugins/chartdldr_pi/CMakeLists.txt | head -1 | sed 's/.*"\(.*\)".*/\1/').$(grep VERSION_PATCH plugins/chartdldr_pi/CMakeLists.txt | head -1 | sed 's/.*"\(.*\)".*/\1/')-pre.${GITHUB_RUN_NUMBER}"
+          fi
+          ./ci/package-chartdldr-artifact.sh windows "$VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chartdldr-windows
+          path: artifact/*.zip
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Cache macOS wx dependency bundle
+        uses: actions/cache@v4
+        with:
+          path: /tmp/macos_deps_universal-opencpn.tar.xz
+          key: chartdldr-macos-deps-bundle-v1
+      - name: Build chartdldr_pi (release-compatible universal)
+        run: ./ci/chartdldr-plugin-build-macos-release.sh
+      - name: Package artifact
+        run: |
+          VERSION="${GITHUB_REF_NAME#chartdldr-v}"
+          if [[ "$VERSION" == "$GITHUB_REF_NAME" ]]; then
+            VERSION="$(grep VERSION_MAJOR plugins/chartdldr_pi/CMakeLists.txt | head -1 | sed 's/.*"\(.*\)".*/\1/').$(grep VERSION_MINOR plugins/chartdldr_pi/CMakeLists.txt | head -1 | sed 's/.*"\(.*\)".*/\1/').$(grep VERSION_PATCH plugins/chartdldr_pi/CMakeLists.txt | head -1 | sed 's/.*"\(.*\)".*/\1/')-pre.${GITHUB_RUN_NUMBER}"
+          fi
+          ./ci/package-chartdldr-artifact.sh macos "$VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chartdldr-macos
+          path: artifact/*.zip
+
+  verify-artifacts:
+    needs:
+      - linux-amd64
+      - linux-arm64
+      - windows
+      - macos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Smoke-test packaged archives
+        run: |
+          chmod +x ./ci/verify-chartdldr-artifacts.sh
+          ./ci/verify-chartdldr-artifacts.sh artifacts
+
+  verify-install-macos:
+    needs:
+      - macos
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: chartdldr-macos
+          path: artifacts
+      - name: Run install script against fake OpenCPN.app
+        run: |
+          chmod +x ./ci/verify-chartdldr-install.sh
+          ./ci/verify-chartdldr-install.sh macos artifacts
+
+  verify-install-windows:
+    needs:
+      - windows
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: chartdldr-windows
+          path: artifacts
+      - name: Run install script against fake OpenCPN tree
+        shell: bash
+        run: |
+          chmod +x ./ci/verify-chartdldr-install.sh
+          ./ci/verify-chartdldr-install.sh windows artifacts
+
+  verify-install-linux:
+    needs:
+      - linux-arm64
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: chartdldr-linux-arm64
+          path: artifacts
+      - name: Run install script (arm64 artifact; amd64 assumed equivalent)
+        run: |
+          chmod +x ./ci/verify-chartdldr-install.sh
+          ./ci/verify-chartdldr-install.sh linux artifacts
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/chartdldr-v')
+    needs:
+      - verify-artifacts
+      - verify-install-macos
+      - verify-install-windows
+      - verify-install-linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Chart Downloader ${{ github.ref_name }}
+          body: |
+            Prebuilt **chartdldr_pi** from fork CI branches
+            (`cursor/chartdldr-prebuilt-ci` / `cursor/chartdldr-prebuilt-release`)
+            stacked on the scheduled bulk update build.
+
+            Download the archive for your platform (.tgz on Linux, .zip on Windows/macOS),
+            read `INSTALL.txt` inside, quit OpenCPN, then run the install script or copy
+            files manually.
+
+            **Assets:** Linux amd64/arm64 (.tgz), Windows (.zip, 32-bit OpenCPN),
+            macOS universal (.zip, Intel + Apple Silicon, release .app compatible).
+            Android/Flatpak are not included; build from source on this branch if needed.
+
+            Commit: ${{ github.sha }}
+          files: |
+            dist/*.zip
+            dist/*.tgz
+          draft: false
+          prerelease: true
